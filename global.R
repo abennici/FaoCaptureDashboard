@@ -13,6 +13,7 @@ library("gganimate")
 library("plotly")
 library("dplyr")
 library("shinyjs")
+library("shinybusy")
 
 #load module functions
 source("https://raw.githubusercontent.com/eblondel/OpenFairViewer/master/src/resources/shinyModule/QueryInfo.R")

@@ -8,8 +8,8 @@ TimeChartUI <- function(id) {
   tabPanel("Time", 
            fluidRow(
              box(title="By type of area",width = 4,collapsible = F,
-               plotlyOutput(ns('Plot_area'))%>%withSpinner(type = 2)
-               ),
+                 plotlyOutput(ns('Plot_area'))%>%withSpinner(type = 2)
+             ),
              box(title="By species",width = 4,collapsible = F,
                  plotlyOutput(ns('Plot_sp'))%>%withSpinner(type = 2)
              ),
@@ -24,7 +24,7 @@ TimeChartUI <- function(id) {
              box(title="Inland Species Repartition",width = 6,collapsible = F,
                  plotlyOutput(ns('pie_inland'))%>%withSpinner(type = 2)
              )
-        )
+           )
   )
 }
 
@@ -40,57 +40,82 @@ TimeChart <- function(input, output, session,data) {
     dplyr::bind_rows(dats)
   }
   
+  #AREA
   observe({
     
-    df<-as.data.frame(data())
+    df<-data()
+    
+    print("Loading df_area")
     
     df_area <- df %>%
       group_by(year,f_area_type) %>% 
       summarise(capture = sum(capture))%>%
       accumulate_by(~year)%>%
       ungroup()
-      #mutate(f_area_type,as.factor(f_area_type))
+    #mutate(f_area_type,as.factor(f_area_type))
     
-    df_sp <- df %>%group_by(year,species) %>% 
-      summarise(capture = sum(capture))%>%
-      accumulate_by(~year)%>%
-      ungroup()
-      #mutate(species,as.factor(species))
+    print("df_area loaded")
     
-    df_flag <- df %>%group_by(year,flag) %>% 
-      summarise(capture = sum(capture))%>%
-      accumulate_by(~year)%>%
-      ungroup()
-      #mutate(flag,as.character(flag))
+    #AREA PLOT
     
-#AREA PLOT
-
     fig_area <- df_area %>% 
       plot_ly(
-      x = ~year, 
-      y = ~capture,
-      #stackgroup = 'one',
-      split=~f_area_type,
-      frame = ~frame,
-      type = 'scatter', 
-      mode = 'lines',
-      line = list(simplyfy = F),
-      text = ~paste("Year: ", year, "<br>capture: ", capture), 
-      hoverinfo = 'text'
-    )
+        x = ~year, 
+        y = ~capture,
+        #stackgroup = 'one',
+        split=~f_area_type,
+        frame = ~frame,
+        type = 'scatter', 
+        mode = 'lines',
+        line = list(simplyfy = F),
+        text = ~paste("Year: ", year, "<br>capture: ", capture), 
+        hoverinfo = 'text'
+      )
     
-      fig_area <- fig_area %>% layout(title = "",
-      yaxis = list(title = "Capture (Tons) by Type of Area", range = c(0,max(df$capture)+25*max(df$capture)/100), zeroline = F),
-      xaxis = list( title = "Year", zeroline = F)
+    fig_area <- fig_area %>% layout(title = "",
+                                    yaxis = list(title = "Capture (Tons) by Type of Area", autorange = TRUE,automargin=TRUE, zeroline = F),
+                                    xaxis = list( title = "Year", autorange = TRUE,automargin=TRUE, zeroline = F)
     ) 
     fig_area <- fig_area %>% animation_opts(frame = 100,transition = 0,redraw = FALSE )
     
     fig_area <- fig_area %>% animation_slider(y = 0.2,anchor="middle",currentvalue = list(
-        active=2018,tickcolor='#ffffff',ticklength=0,prefix = "",font = list(size=10))
-          )
+      active=2018,tickcolor='#ffffff',ticklength=0,prefix = "",font = list(size=10))
+    )
+    
+    print("Figure for area prepared")
+    
+    output$Plot_area <- renderPlotly(fig_area)
+    
+    print("Figure for area RENDERED")
+    
+  })
   
-  
+  observe({
+    
+    df<-data()
+    
+    
     #SP PLOT
+    
+    print("Loading df_sp")
+
+    rank_sp <- df %>%
+      group_by(species) %>% 
+      summarise(capture = sum(capture))%>%
+      mutate(rank = rank(-capture)) %>%
+      filter(rank <=10) %>%
+      ungroup()
+    df_sp <- df %>%
+      filter(species %in% rank_sp$species)%>%
+      group_by(year,species) %>% 
+      summarise(capture = sum(capture))%>%
+      accumulate_by(~year)%>%
+      ungroup()
+    #mutate(species,as.factor(species))
+    
+    print("df_sp loaded")
+    
+    print(sprintf("We have selected %s species!", length(unique(df_sp$species))))
     
     fig_sp <- df_sp %>% plot_ly(height = 300)
     fig_sp<-fig_sp%>% add_trace(
@@ -107,8 +132,8 @@ TimeChart <- function(input, output, session,data) {
     )
     
     fig_sp <- fig_sp %>% layout(title = "",
-                                    yaxis = list(title = "Capture (Tons) by Species", range = c(0,max(df$capture)+25*max(df$capture)/100), zeroline = F),
-                                    xaxis = list( title = "Year", zeroline = F, showgrid = F)
+                                yaxis = list(title = "Capture (Tons) by Species", autorange = TRUE,automargin=TRUE, zeroline = F),
+                                xaxis = list( title = "Year", autorange = TRUE,automargin=TRUE,zeroline = F, showgrid = F)
     ) 
     fig_sp <- fig_sp %>% animation_opts(frame = 100,transition = 0,redraw = FALSE )
     
@@ -116,7 +141,31 @@ TimeChart <- function(input, output, session,data) {
       active=2018,tickcolor='#ffffff',ticklength=0,prefix = "",font = list(size=10))
     )    
     
+    print("Figure for species prepared")
+    
+    output$Plot_sp <- renderPlotly(fig_sp)
+    
+    print("Figure for sp RENDERED")
+    
     #FLAG PLOT
+    print("Loading df_flag")
+    
+    rank_flag <- df %>%
+      group_by(flag) %>% 
+      summarise(capture = sum(capture))%>%
+      mutate(rank = rank(-capture)) %>%
+      filter(rank <=10) %>%
+      ungroup()
+    
+    df_flag <- df %>%
+      filter(flag%in%rank_flag$flag)%>%
+      group_by(year,flag) %>% 
+      summarise(capture = sum(capture))%>%
+      accumulate_by(~year)%>%
+      ungroup()
+    #mutate(flag,as.character(flag))
+    
+    print("df_flag loaded")
     
     fig_flag <- df_flag %>% plot_ly(height = 300)
     fig_flag<-fig_flag%>% add_trace(
@@ -133,8 +182,8 @@ TimeChart <- function(input, output, session,data) {
     )
     
     fig_flag <- fig_flag %>% layout(title = "",
-                                yaxis = list(title = "Capture (Tons) by Flags", range = c(0,max(df$capture)+25*max(df$capture)/100), zeroline = F),
-                                xaxis = list( title = "Year", zeroline = F, showgrid = F)
+                                    yaxis = list(title = "Capture (Tons) by Flags", autorange = TRUE,automargin=TRUE, zeroline = F),
+                                    xaxis = list( title = "Year", autorange = TRUE,automargin=TRUE,zeroline = F, showgrid = F)
     ) 
     fig_flag <- fig_flag %>% animation_opts(frame = 100,transition = 0,redraw = FALSE )
     
@@ -142,8 +191,14 @@ TimeChart <- function(input, output, session,data) {
       active=2018,tickcolor='#ffffff',ticklength=0,prefix = "",font = list(size=10))
     )
     
-  #DONUT Chart_marine
-
+    print("Figure for flag prepared")
+    
+    output$Plot_flag <- renderPlotly(fig_flag)
+    
+    print("Figure for flag RENDERED")
+    
+    #DONUT Chart_marine
+    
     df_donut_marine <- df %>% 
       filter(f_area_type=="marine")%>%
       group_by(species) %>%
@@ -154,9 +209,12 @@ TimeChart <- function(input, output, session,data) {
     fig_donut_marine  <- plot_ly(df_donut_marine, labels = ~as.factor(label), values = ~capture,textinfo = 'none')
     fig_donut_marine  <- fig_donut_marine  %>% add_pie(hole = 0.6)
     fig_donut_marine  <- fig_donut_marine  %>% layout(title = '',
-                          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
-                          yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
-                          showlegend = FALSE)
+                                                      xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                                                      yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                                                      showlegend = FALSE)
+    
+    output$pie_marine  <- renderPlotly(fig_donut_marine)
+    
     #DONUT Chart_inland
     
     df_donut_inland <- df %>%
@@ -172,11 +230,10 @@ TimeChart <- function(input, output, session,data) {
                                                       xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
                                                       yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
                                                       showlegend = FALSE)   
-
-    output$Plot_area <- renderPlotly(fig_area)
-    output$Plot_sp <- renderPlotly(fig_sp)
-    output$Plot_flag <- renderPlotly(fig_flag)
-    output$pie_marine  <- renderPlotly(fig_donut_marine)
+    
+    
+    
+    
     output$pie_inland  <- renderPlotly(fig_donut_inland)
   })
 }

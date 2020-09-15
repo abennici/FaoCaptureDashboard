@@ -40,7 +40,7 @@ p <- data %>%
   geom_text(aes(y = 0, label = sp_name), vjust = 0.2, hjust = 1) +
   geom_text(aes(label = scales::comma(capture)), hjust = "left", nudge_y = 100000, colour = "grey30") +
   coord_flip(clip="off") +
-  scale_x_reverse()+
+  #scale_x_reverse()+
   #scale_x_discrete("") +
   scale_y_continuous("",labels=scales::comma) +
    guides(color = FALSE, fill = FALSE) +
@@ -71,7 +71,7 @@ p <- data %>%
 
 output$Top_sp <- renderImage({
   #outfile <- tempfile(fileext='.gif')
-  anim_save("outfile.gif", animate(p, fps = 5, end_pause =40, width = 450, height = 300))
+  anim_save("outfile.gif", animate(p, duration=2*length(unique(data$year)), end_pause =40, width = 450, height = 300))
   # nframes = length(unique(data$year))*6
   list(src = "outfile.gif",
        contentType = 'image/gif'
@@ -96,7 +96,7 @@ output$Top_sp <- renderImage({
     geom_text(aes(label = scales::comma(capture)), hjust = "left", nudge_y = 100000, colour = "grey30") +
     coord_flip(clip="off") +
    # scale_x_discrete("") +
-    scale_x_reverse()+
+    #scale_x_reverse()+
     scale_y_continuous("",labels=scales::comma) +
     guides(color = FALSE, fill = FALSE) +
     theme(axis.line=element_blank(),
@@ -126,7 +126,7 @@ output$Top_sp <- renderImage({
   
   output$Top_flag <- renderImage({
     #outfile <- tempfile(fileext='.gif')
-    anim_save("outfile2.gif", animate(p2, fps = 5, end_pause =40, width = 450, height = 300))
+    anim_save("outfile2.gif", animate(p2, duration=2*length(unique(data_flag$year)),end_pause =40, width = 450, height = 300))
     # nframes = length(unique(data$year))*6
     list(src = "outfile2.gif",
          contentType = 'image/gif'

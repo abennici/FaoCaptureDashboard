@@ -1,10 +1,11 @@
 
 ## ui.R ##
 sidebar <- dashboardSidebar(
-  sidebarMenu(
+  sidebarMenu(id="sidebarmenu",
    # menuItem("Top Species", tabName = "TopSp", icon = icon("fish")),
    # menuItem("Capture animation", tabName = "AnimCapture", icon = icon("fish"))
     menuItem("Home",tabName="Home"),
+    menuItem("Query", tabName = "Query", icon = icon("gears")),
     menuItem("Visualisation", tabName = "Visualisation", icon = icon("bar-chart-o")),
     menuItem("Top10", tabName = "Top10", icon = icon("trophy")),
     menuItem("Data", tabName = "Data", icon = icon("table"))
@@ -16,8 +17,8 @@ body <- dashboardBody(
     tabItems(
     #tabItem(tabName = "TopSp",TopSpeciesUI(id = "id_2")),
     tabItem(tabName = "Home",HomeUI()),
-    tabItem(tabName = "Visualisation",SubsetUI(id="id_3"),
-              TimeChartUI(id = "id_4")),
+    tabItem(tabName = "Query",SubsetUI(id="id_3")),
+    tabItem(tabName = "Visualisation",TimeChartUI(id = "id_4")),
     tabItem(tabName = "Top10",RaceChartUI(id="id_5")),
     tabItem(tabName = "Data", DataTableWideUI(id = "id_2"))
     #tabItem(tabName = "AnimCapture",AnimCaptUI(id = "id_2"))
