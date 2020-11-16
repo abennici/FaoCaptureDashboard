@@ -5,13 +5,12 @@ RaceChartUI <- function(id) {
   # Options for Spinner
   options(spinner.color="#0275D8", spinner.color.background="#ffffff", spinner.size=1)
 
-  tabPanel("RaceChart", 
-         fluidRow(box(imageOutput(ns('Top_sp'))%>%withSpinner(type = 2)),
-                  box(imageOutput(ns('Top_flag'))%>%withSpinner(type = 2))
-                      
+         fluidRow(
+           box(align = "center",imageOutput(ns('Top_sp'),height = "300px")%>%withSpinner(type = 2)),
+           box(align = "center",imageOutput(ns('Top_flag'),height="300px")%>%withSpinner(type = 2))
+               
                   )
-           )
- 
+
 }
 
 # # Function for module server logic
@@ -19,6 +18,7 @@ RaceChartUI <- function(id) {
 #test
 RaceChart <- function(input, output, session,data) {
   observe({
+
 
 tab<-as.data.frame(data())
 
@@ -32,17 +32,19 @@ data <- tab%>%
   filter(rank <=10) %>%
   ungroup()
 print(data)
-
+new_palette_sp<-colorRampPalette(paletteer_d("rcartocolor::Pastel"))(length(unique(data$sp_name)))
 p <- data %>%
   ggplot(aes(x = -rank,y = capture, group = sp_name,fill=sp_name)) +
   geom_tile(aes(y = capture / 2, height = capture), width = 0.9) +
   #geom_text(aes(label = sp_name), hjust = "right", colour = "black",  size=4, fontface = "italic", nudge_y = -100000) +
-  geom_text(aes(y = 0, label = sp_name), vjust = 0.2, hjust = 1) +
+  geom_text(aes(y = 0, label = sp_name), vjust = 0.2, hjust = 1,size=3) +
   geom_text(aes(label = scales::comma(capture)), hjust = "left", nudge_y = 100000, colour = "grey30") +
   coord_flip(clip="off") +
   #scale_x_reverse()+
   #scale_x_discrete("") +
   scale_y_continuous("",labels=scales::comma) +
+  scale_fill_manual(values=new_palette_sp)+
+  #scale_fill_paletteer_d("ggsci::default_ucscgb")+
    guides(color = FALSE, fill = FALSE) +
          theme(axis.line=element_blank(),
                axis.text.x=element_blank(),
@@ -57,11 +59,11 @@ p <- data %>%
                panel.grid.minor=element_blank(),
              panel.grid.major.x = element_line( size=.1, color="grey" ),
              panel.grid.minor.x = element_line( size=.1, color="grey" ),
-             plot.title=element_text(size=25, hjust=0.5, face="bold", colour="grey", vjust=-1),
-             plot.subtitle=element_text(size=18, hjust=0.5, face="italic", color="grey"),
+             plot.title=element_text(size=20, hjust=0.5, face="bold", colour="grey", vjust=-1),
+             plot.subtitle=element_text(size=15, hjust=0.5, face="italic", color="grey"),
              plot.caption =element_text(size=8, hjust=0.5, face="italic", color="grey"),
              plot.background=element_blank(),
-             plot.margin = margin(2,2, 2, 4, "cm"))+
+             plot.margin = margin(t=0, l=3.5, b=0,r=2, "cm"))+
   transition_time(year) +
   view_follow(fixed_x = TRUE)  +
  # ease_aes('cubic-in-out') +
@@ -71,66 +73,69 @@ p <- data %>%
 
 output$Top_sp <- renderImage({
   #outfile <- tempfile(fileext='.gif')
-  anim_save("outfile.gif", animate(p, duration=2*length(unique(data$year)), end_pause =40, width = 450, height = 300))
+  anim_save("outfile.gif", animate(p,  nframe=150 ,duration=length(unique(data$year)), end_pause =15, width = 500, height = 280,renderer =gifski_renderer()))
+  #anim_save("outfile.avi", animate(p, duration=4*length(unique(data$year)), end_pause =40, width = 1000, height = 500,renderer =av_renderer()))
   # nframes = length(unique(data$year))*6
   list(src = "outfile.gif",
        contentType = 'image/gif'
   )}, deleteFile = TRUE)
 
-###FLAG Chart
+ ###FLAG Chart
 
-  data_flag <- tab%>%
-    left_join(l_flag,by="flag") %>%
-    group_by(year,flag_name) %>% 
-    summarise(capture = sum(capture))%>%
-    group_by(year) %>%
-    mutate(rank = rank(-capture)) %>%
-    group_by(flag_name) %>% 
-    filter(rank <=10) %>%
-    ungroup()
+   data_flag <- tab%>%
+     left_join(l_flag,by="flag") %>%
+     group_by(year,flag_name) %>%
+     summarise(capture = sum(capture))%>%
+     group_by(year) %>%
+     mutate(rank = rank(-capture)) %>%
+     group_by(flag_name) %>%
+     filter(rank <=10) %>%
+     ungroup()
+   new_palette_flag<-colorRampPalette(paletteer_d("rcartocolor::Pastel"))(length(unique(data_flag$flag_name)))
+   p2 <- data_flag %>%
+     ggplot(aes(x = -rank,y = capture, group = flag_name,fill=flag_name)) +
+     geom_tile(aes(y = capture / 2, height = capture), width = 0.9) +
+     geom_text(aes(y = 0, label = flag_name), vjust = 0.2, hjust = 1,size=3) +
+     geom_text(aes(label = scales::comma(capture)), hjust = "left", nudge_y = 100000, colour = "grey30") +
+     coord_flip(clip="off") +
+    # scale_x_discrete("") +
+     #scale_x_reverse()+
+     #scale_y_continuous("",labels=scales::comma) +
+     scale_fill_manual(values =new_palette_flag )+
+   #  scale_fill_paletteer_d("palettetown::bulbasaur")+
+    # guides(color = FALSE, fill = FALSE) +
+     theme(axis.line=element_blank(),
+           axis.text.x=element_blank(),
+           axis.text.y=element_blank(),
+           axis.ticks=element_blank(),
+           axis.title.x=element_blank(),
+           axis.title.y=element_blank(),
+           legend.position="none",
+           panel.background=element_blank(),
+           panel.border=element_blank(),
+           panel.grid.major=element_blank(),
+           panel.grid.minor=element_blank(),
+           panel.grid.major.x = element_line( size=.1, color="grey" ),
+           panel.grid.minor.x = element_line( size=.1, color="grey" ),
+           plot.title=element_text(size=20, hjust=0.5, face="bold", colour="grey", vjust=-1),
+           plot.subtitle=element_text(size=15, hjust=0.5, face="italic", color="grey"),
+           plot.caption =element_text(size=8, hjust=0.5, face="italic", color="grey"),
+           plot.background=element_blank(),
+         plot.margin = margin(t=0, l=3.5, b=0,r=2, "cm"))+
+     transition_time(year) +
+     view_follow(fixed_x = TRUE)  +
+   #  ease_aes('cubic-in-out') +
+     labs(title='Top 10 flag',
+          subtitle='Capture in {round(frame_time,0)}',
+          caption="Fish capture in Tones | Data Source: FAO")
 
-  p2 <- data_flag %>%
-    ggplot(aes(x = -rank,y = capture, group = flag_name,fill=flag_name)) +
-    geom_tile(aes(y = capture / 2, height = capture), width = 0.9) +
-    geom_text(aes(y = 0, label = flag_name), vjust = 0.2, hjust = 1) +
-    geom_text(aes(label = scales::comma(capture)), hjust = "left", nudge_y = 100000, colour = "grey30") +
-    coord_flip(clip="off") +
-   # scale_x_discrete("") +
-    #scale_x_reverse()+
-    scale_y_continuous("",labels=scales::comma) +
-    guides(color = FALSE, fill = FALSE) +
-    theme(axis.line=element_blank(),
-          axis.text.x=element_blank(),
-          axis.text.y=element_blank(),
-          axis.ticks=element_blank(),
-          axis.title.x=element_blank(),
-          axis.title.y=element_blank(),
-          legend.position="none",
-          panel.background=element_blank(),
-          panel.border=element_blank(),
-          panel.grid.major=element_blank(),
-          panel.grid.minor=element_blank(),
-          panel.grid.major.x = element_line( size=.1, color="grey" ),
-          panel.grid.minor.x = element_line( size=.1, color="grey" ),
-          plot.title=element_text(size=25, hjust=0.5, face="bold", colour="grey", vjust=-1),
-          plot.subtitle=element_text(size=18, hjust=0.5, face="italic", color="grey"),
-          plot.caption =element_text(size=8, hjust=0.5, face="italic", color="grey"),
-          plot.background=element_blank(),
-          plot.margin = margin(2,2, 2, 4, "cm"))+
-    transition_time(year) +
-    view_follow(fixed_x = TRUE)  +
-  #  ease_aes('cubic-in-out') +
-    labs(title='Top 10 flag',
-         subtitle='Capture in {round(frame_time,0)}',
-         caption="Fish capture in Tones | Data Source: FAO")
-  
-  output$Top_flag <- renderImage({
-    #outfile <- tempfile(fileext='.gif')
-    anim_save("outfile2.gif", animate(p2, duration=2*length(unique(data_flag$year)),end_pause =40, width = 450, height = 300))
-    # nframes = length(unique(data$year))*6
-    list(src = "outfile2.gif",
-         contentType = 'image/gif'
-    )}, deleteFile = TRUE)
+   output$Top_flag <- renderImage({
+     #outfile <- tempfile(fileext='.gif')
+     anim_save("outfile2.gif", animate(p2, nframe=150,duration=length(unique(data_flag$year)),end_pause =15, width = 500, height = 280,renderer =gifski_renderer()))
+     # nframes = length(unique(data$year))*6
+     list(src = "outfile2.gif",
+          contentType = 'image/gif'
+     )}, deleteFile = TRUE)
 })
 
   }
