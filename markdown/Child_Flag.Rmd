@@ -1,0 +1,142 @@
+```{r echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE}
+tmp<-subset(l_flag,flag==f)
+message<-paste0(tmp$flag_name,' [',tmp$flag,']')
+```
+### `r message`
+
+
+```{r echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default",fig.cap=paste("Visual repartition of captures for ",tmp$flag_name," (A) Annual abondance for each area type; (B) Annual repartition of the 10 most catch species; (C) Global repartition of the 15 most caught species calculate on the total of capture by species from 1950 to 2018")}
+
+df_area <- data_region %>%
+      filter(flag==f) %>%
+      group_by(year,f_area_type) %>% 
+      summarise(capture = sum(capture))%>%
+      ungroup()
+
+ggplot(df_area,aes(x=as.integer(year),y=capture,colour=f_area_type))+
+  geom_line(stat="identity")+
+  labs(title="A",x="Year",y="Capture (Tonnes)")+
+  theme_bw()+
+  scale_x_continuous(breaks=seq(min(as.integer(df_area$year)),max(as.integer(df_area$year)),10))+
+  theme(legend.title = element_blank(),
+        legend.position = "bottom")
+
+  rank_sp <- data_region %>%
+      filter(flag==f) %>%
+    group_by(species) %>% 
+    summarise(capture = sum(capture))%>%
+    mutate(rank = rank(-capture)) %>%
+    filter(rank <=10) %>%
+    ungroup()
+  
+  df_sp <- data_region %>%
+      filter(flag==f) %>%
+    filter(species %in% rank_sp$species)%>%
+    group_by(year,species) %>% 
+    summarise(capture = sum(capture))%>%
+    ungroup()
+
+ggplot(df_sp,aes(x=as.integer(year),y=capture,colour=species))+
+  geom_line(stat="identity")+
+  labs(title="B",x="Year",y="Capture (Tonnes)")+
+  scale_x_continuous(breaks=seq(min(as.integer(df_sp$year)),max(as.integer(df_sp$year)),10))+
+  theme_bw()+
+  theme(legend.title = element_blank(),
+        legend.position = "bottom")
+
+sp_all<-data_region %>%
+      filter(flag==f) %>%
+  group_by(species)%>%
+  summarize(capture=sum(capture))%>%
+  mutate(rank = rank(-capture))
+
+sp_over<-  sp_all%>%
+  filter(rank >15) %>%
+  summarize(species="others",capture=sum(capture),rank=0)%>%
+  distinct()
+
+df<-sp_all%>%
+  filter(rank <=15) %>%
+  full_join(sp_over)%>%
+  left_join(sp_register)%>%
+  mutate(pour=capture/sum(capture)*100)%>%
+  mutate(position = cumsum(pour) - 0.5*pour)%>%
+  arrange(pour,desc=T)
+
+df$label2<-ifelse(df$label=='NA'|is.na(df$label),'Others',df$label)
+df$label2<-paste(df$label2,round(df$pour,2),"%",sep=' ')
+
+#new_palette<-colorRampPalette(paletteer_d("rcartocolor::Pastel"))(length(unique(df$label)))
+# create bar plot
+pie<-ggplot(df, aes(x = 2, y = pour, fill = label2)) +
+  geom_bar(stat = "identity") +
+  coord_polar(theta="y",start=0)+
+  theme_void()+
+  #scale_fill_manual(values =new_palette,labels = df$label)+
+  labs(title="C",fill="Species")+
+  xlim(0.5, 2.5)
+pie
+
+tmp <- data_region %>%
+      filter(flag==f) %>%
+      group_by(year) %>% 
+      summarise(capture = sum(capture))%>%
+      ungroup()
+
+tmp_min<-tmp[tmp$capture==min(tmp$capture),]
+tmp_max<-tmp[tmp$capture==max(tmp$capture),]
+tmp_mean<-round(mean(tmp$capture),0)
+
+tmp_type<-cast(df_area, year ~ f_area_type)
+pourc<-abs(round(mean(((tmp_type$marine-tmp_type$inland)/tmp_type$marine)*100),2))
+pourc<-ifelse(is.nan(pourc),100,pourc)
+test<-tmp_type$marine-tmp_type$inland
+test1<-if(length(test[test>1])==length(test)){"always upper"
+        }else if(length(test[test>1])>length(test[test<1])){"generally upper"
+        }else if(length(test[test>1])==length(test[test<1])){"equal"
+        }else if(length(test[test>1])<length(test[test<1])){"generally lower"
+        }else if(length(test[test<1])==length(test)){"always lower"}else{"ERROR"}
+
+most_sp<-subset(df,rank==1,select=c(label))
+nb_most_sp<-subset(df,rank==1,select=c(capture))
+per_most_sp<-round(subset(df,rank==1,select=c(pour)),2)
+```
+
+Over the entire time series the year recording the fewest captures is **`r tmp_min$year[1]`** (with **`r tmp_min$capture[1]`** tonnes) and the one recording the most captures is **`r tmp_max$year[1]`** (with **`r tmp_max$capture[1]`** tonnes).The average quantity of catches per year is **`r tmp_mean`** tons.
+The quantity of fish caught is **`r test1`** in the marine area than inland area with in average **`r pourc`** % of capture caught in marine area. The most catched species/genus/family is *`r most_sp`* with **`r nb_most_sp`** captures (total production of all years from 1950 to 2018) and representing **`r per_most_sp`** %. 
+
+\newpage
+\blandscape
+
+```{r, results='asis', echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE}
+
+data_flag<-data_region%>%
+  filter(flag==f)%>%
+  left_join(sp_register)
+d<-cast(data_flag, label ~ year,value = 'capture',fun.aggregate=sum,margins=TRUE)
+
+names(d)[names(d) == '(all)'] <- 'Total'
+levels(d[,1])[length(d[,1])]<-"Total"
+
+if(ncol(d)<40){
+print(knitr::kable(d, format = "latex", longtable = TRUE , caption = 'Global repartition of fisheries captures (in tonnes) in by species and by year') %>%
+          kable_styling(latex_options = c("repeat_header"),font_size = 3,full_width = F) %>%
+          column_spec(1, bold = T, italic=T)%>%
+          row_spec(nrow(d),bold = T, italic=T,color = "red"))
+}else{
+d1<-d[,c(1:floor(ncol(d)/2))]
+d2<-d[,c(1,37:ceiling(ncol(d)/2))]
+#print(xtable(d, caption="Landscape table", comment=FALSE),floating = FALSE)
+print(knitr::kable(d1, format = "latex", longtable = TRUE , caption = 'Global repartition of fisheries captures (in tonnes) in by species and by year') %>%
+          kable_styling(latex_options = c("repeat_header"),font_size = 3,full_width = T) %>%
+          column_spec(1, bold = T, italic=T)%>%
+          row_spec(nrow(d1),bold = T, italic=T,color = "red"))
+
+print(knitr::kable(d2, format = "latex", longtable = TRUE ) %>%
+          kable_styling(latex_options = c("repeat_header"),font_size = 3,full_width = T)%>%
+          column_spec(1, bold = T,italic=T)%>%
+          column_spec(ncol(d2), bold = T,italic=T,color = "red")%>%
+          row_spec(nrow(d2),bold = T, italic=T,color = "red"))
+}
+```
+\elandscape

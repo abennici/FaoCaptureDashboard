@@ -15,7 +15,7 @@ FlagChartUI <- function(id) {
  # )
 }
 # Function for module server logic
-FlagChart <- function(input, output, session,data) {
+FlagChart <- function(input, output, session,data,results) {
   
   accumulate_by <- function(dat, var) {
     var <- lazyeval::f_eval(var, dat)
@@ -33,6 +33,7 @@ FlagChart <- function(input, output, session,data) {
       mutate(rank = rank(-capture)) %>%
       filter(rank <=10) %>%
       ungroup()
+    
     df_flag <- data() %>%
       filter(flag %in% rank_flag$flag)%>%
       group_by(year,flag) %>% 
@@ -77,7 +78,7 @@ FlagChart <- function(input, output, session,data) {
             zeroline = F
           ))
         
-        
+        results$fig_flag<-df_flag
         return(output$Plot_flag <- renderPlotly({fig_flag}))
       }else{      
         print("ANIMATE")

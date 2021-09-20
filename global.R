@@ -17,8 +17,32 @@ library("shinybusy")
 library("gsheet")
 library("gifski")
 library("png")
-library("av")
+#library("av")
 library("paletteer")
+library("stringr")
+#library("orca")
+#library("rmdformats")
+library("glue")
+library("reshape")
+library("xtable")
+
+####global function
+collapse_transformer <- function(regex = "[*]$", ...) {
+  function(text, envir) {
+    collapse <- grepl(regex, text)
+    if (collapse) {
+      text <- sub(regex, "", text)
+    }
+    res <- identity_transformer(text, envir)
+    if (collapse) {
+      glue_collapse(res, ...)  
+    } else {
+      res
+    }
+  }
+}
+
+
 
 #load module functions
 #source("https://raw.githubusercontent.com/eblondel/OpenFairViewer/master/src/resources/shinyModule/QueryInfo.R")
@@ -38,6 +62,7 @@ source("modules/InfoBox.R")
 source("modules/RaceChart.R")
 source("modules/TimeChart.R")
 source("modules/DataTableWide.R")
+source("modules/DownloadReport.R")
 #source("modules/DataWithoutDsd.R")
 source("ui.R")
 source("server.R")

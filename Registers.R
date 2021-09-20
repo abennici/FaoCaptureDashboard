@@ -3,13 +3,25 @@ req = readr::read_csv("https://raw.githubusercontent.com/openfigis/RefData/gh-pa
 #colnames(req) <- c("Alpha_Code", "Identifier", "Name_En", "Name_Fr", "Name_Es", "Name_Ar", "Name_Cn", "Name_Ru", "Unit", "Scientific_Name", "Author", "Taxonomic_Code")
 sp_register <- data.frame(
   species = req$Alpha3_Code,
-  label = paste0(req$Name_En," [",req$Alpha_Code,"]"),
+  label = paste0(req$Name_En," [",req$Alpha3_Code,"]"),
   stringsAsFactors = FALSE
 )
 
+region_register_github <-function(){
+  req<-readr::read_csv("https://raw.githubusercontent.com/openfigis/RefData/gh-pages/country/CL_FI_COUNTRY_GEOREGION.csv")  
+  out <- data.frame(
+    code = req$UN_Code,
+    label = req$Name_En,
+    stringsAsFactors = FALSE
+  )
+  out <- out[!is.na(out$code),]
+  return(out)
+}
+
 l_sp<-readr::read_csv("https://raw.githubusercontent.com/openfigis/RefData/gh-pages/species/CL_FI_SPECIES_ITEM.csv", col_names = T)
-l_sp<-l_sp[,c("Alpha3_Code","Scientific_Name")]
-colnames(l_sp)<-c("species","sp_name")
+l_sp<-l_sp[,c("Alpha3_Code","Scientific_Name","Identifier")]
+colnames(l_sp)<-c("species","sp_name","aphia")
+l_sp$url<-paste0("http://www.fao.org/fishery/species/",l_sp$aphia,"/en")
 
 l_flag<-readr::read_csv("https://raw.githubusercontent.com/openfigis/RefData/gh-pages/country/CL_FI_COUNTRY_ITEM.csv", guess_max = 0)
 l_flag<-l_flag[,c("ISO3_Code","Name_En")]

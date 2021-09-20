@@ -1,0 +1,295 @@
+---
+title: "FAO Global Capture Report"
+subtitle: "`r results$global_subtitle`"
+date : "`r format(Sys.time(), '%d %B, %Y')`"
+
+output:
+     pdf_document:
+       fig_caption: yes
+       toc: yes
+       toc_depth: 2
+header-includes:
+       - \usepackage{fancyhdr}
+---
+\addtolength{\headheight}{1.0cm} 
+\pagestyle{fancyplain} 
+\rhead{\includegraphics[height=1cm]{D:/FAO-BLUECLOUD_04052020_11082020/02-R/04-Github/FaoCaptureDashboard/www/logo_BlueCloud.png}} 
+\lhead{\includegraphics[height=1cm]{D:/FAO-BLUECLOUD_04052020_11082020/02-R/04-Github/FaoCaptureDashboard/www/FAO-logo.png}}
+\renewcommand{\headrulewidth}{0pt} 
+
+
+
+## Introduction
+
+The following report is a summary of long term  global fisheries data collect by the FAO.
+`r md$identificationInfo[[1]]$abstract`
+```{r data_selected, echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE}
+
+region_register_github <-function(){
+  req<-readr::read_csv("https://raw.githubusercontent.com/openfigis/RefData/gh-pages/country/CL_FI_COUNTRY_GEOREGION.csv")  
+  out <- data.frame(
+    code = req$UN_Code,
+    label = req$Name_En,
+    stringsAsFactors = FALSE
+  )
+  out <- out[!is.na(out$code),]
+  return(out)
+}
+
+dataDesc<-glue('The content of this report will therefore relate to regions : **{subset(region_register_github(),code%in%unique(param$select_region))$label*}**. The data include **{unique(param$select_f_area_type)*}** fish catches from **{min(as.numeric(param$select_year))}** to **{max(as.numeric(param$select_year))}**.',.transformer = collapse_transformer(sep = ", ", last = " and ")) 
+
+
+```
+`r dataDesc`
+
+## Summary
+
+Number of regions | Number of countries | Number of different species | Temporal coverage | Total of captures
+------------- | ------------- |------------- | -------------|------------- |
+`r results$nb_region`|`r results$nb_flag` |`r results$nb_species` |`r paste0(results$min_year," - ",results$max_year)` |`r results$nb_capture` 
+
+\newpage
+
+## Visualization of results
+
+```{r area_fig, echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE , fig.width=7,fig.height=6,fig.cap="\\label{fig:area_fig}Sum of fish capture by year for each type of area"}
+
+ggplot(results$fig_area,aes(x=as.integer(year),y=capture,colour=f_area_type))+
+  #geom_line(stat="identity")+
+  geom_line(stat="identity")+
+  labs(x="Year",y="Capture (Tons)")+
+  theme_bw()+
+  scale_x_continuous(breaks=seq(min(as.integer(results$fig_area$year)),max(as.integer(results$fig_area$year)),10))+
+  theme(legend.title = element_blank(),
+        legend.position = "bottom")
+
+tmp <- results$fig_area %>%
+      group_by(year) %>% 
+      summarise(capture = sum(capture))%>%
+      ungroup()
+tmp_min<-c(tmp[tmp$capture==min(tmp$capture),])
+tmp_max<-c(tmp[tmp$capture==max(tmp$capture),])
+tmp_mean<-mean(tmp$capture)
+
+tmp_type<-cast(results$fig_area, year ~ f_area_type)
+pourc<-round(mean(((tmp_type$marine-tmp_type$inland)/tmp_type$marine)*100),2)
+test<-tmp_type$marine-tmp_type$inland
+test1<-if(length(test[test>1])==length(test)){"always upper"
+        }else if(length(test[test>1])>length(test[test<1])){"generally upper"
+        }else if(length(test[test>1])==length(test[test<1])){"equal"
+        }else if(length(test[test>1])<length(test[test<1])){"generally lower"
+        }else if(length(test[test<1])==length(test)){"always lower"}else{"ERROR"}
+
+```
+
+Over the entire time series (*Figure \ref{fig:area_fig}*), the year recording the fewest captures is **`r tmp_min$year`** (with **`r tmp_min$capture`** tons) and the one recording the most captures is **`r tmp_max$year`** (with **`r tmp_max$capture`** tons).The average quantity of catches per year is **`r tmp_mean`** tons.
+The quantity of fish caught is **`r test1`** in the marine area than inland area with in average **`r pourc`** % of capture caught in marine area.
+
+```{r species_fig, echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE , fig.width=7,fig.height=6,fig.cap="\\label{fig:species_fig}Sum of capture by year for the top ten catched species"}
+ggplot(results$fig_sp,aes(x=as.integer(year),y=capture,colour=species))+
+  geom_line(stat="identity")+
+  labs(x="Year",y="Capture (Tons)")+
+  scale_x_continuous(breaks=seq(min(as.integer(results$fig_sp$year)),max(as.integer(results$fig_sp$year)),10))+
+  theme_bw()+
+  theme(legend.title = element_blank(),
+        legend.position = "bottom")
+```
+
+```{r flag_fig, echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE , fig.width=7,fig.height=6,fig.cap="\\label{fig:flag_fig}Sum of capture by year for the top ten fishing country"}
+ggplot(results$fig_flag,aes(x=as.integer(year),y=capture,colour=flag))+
+  geom_line(stat="identity")+
+  labs(x="Year",y="Capture (Tons)")+
+  scale_x_continuous(breaks=seq(min(as.integer(results$fig_flag$year)),max(as.integer(results$fig_flag$year)),10))+
+  theme_bw()+
+  theme(legend.title = element_blank(),
+        legend.position = "bottom")
+```
+
+
+```{r marine_sp_fig, echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE , fig.width=7,fig.height=6,fig.cap="\\label{fig:marine_sp_fig}Distribution in percent of the 15 most fished species in marine areas"}
+
+sp_all<-data%>%
+  filter(f_area_type=="marine")%>%
+  group_by(species)%>%
+  summarize(capture=sum(capture))%>%
+  mutate(rank = rank(-capture))
+
+sp_over<-  sp_all%>%
+  filter(rank >15) %>%
+  summarize(species="others",capture=sum(capture),rank=0)%>%
+  distinct()
+
+df<-sp_all%>%
+  filter(rank <=15) %>%
+  full_join(sp_over)%>%
+  left_join(sp_register)%>%
+  mutate(pour=capture/sum(capture)*100)%>%
+  mutate(position = cumsum(pour) - 0.5*pour)%>%
+  arrange(desc(pour))
+  
+
+df[is.na(df)]<-"Others"
+
+new_palette<-colorRampPalette(paletteer_d("rcartocolor::Pastel"))(length(unique(df$label)))
+# create bar plot
+pie<-ggplot(df, aes(x = 2, y = pour, fill = label)) +
+  geom_bar(stat = "identity") +
+  coord_polar(theta="y",start=0)+
+  theme_void()+
+  scale_fill_manual(values =new_palette,labels = paste0(df$label,sprintf("(%1.2f%%)",df$pour)))+
+  labs(fill="Species")+
+  xlim(0.5, 2.5)
+pie
+
+```
+
+```{r inland_sp_fig, echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE , fig.width=7,fig.height=6,fig.cap="\\label{fig:marine_sp_fig}Distribution in percent of the 15 most fished species in inland areas"}
+
+sp_all<-data%>%
+  filter(f_area_type=="inland")%>%
+  group_by(species)%>%
+  summarize(capture=sum(capture))%>%
+  mutate(rank = rank(-capture))
+
+sp_over<-  sp_all%>%
+  filter(rank >15) %>%
+  summarize(species="others",capture=sum(capture),rank=0)%>%
+  distinct()
+
+df<-sp_all%>%
+  filter(rank <=15) %>%
+  full_join(sp_over)%>%
+  left_join(sp_register)%>%
+  mutate(pour=capture/sum(capture)*100)%>%
+  mutate(position = cumsum(pour) - 0.5*pour)%>%
+  arrange(desc(pour))
+  
+
+df[is.na(df)]<-"Others"
+
+new_palette<-colorRampPalette(paletteer_d("rcartocolor::Pastel"))(length(unique(df$label)))
+# create bar plot
+pie<-ggplot(df, aes(x = 2, y = pour, fill = label)) +
+  geom_bar(stat = "identity") +
+  coord_polar(theta="y",start=0)+
+  theme_void()+
+  scale_fill_manual(values =new_palette,labels = paste0(df$label,sprintf("(%1.2f%%)",df$pour)))+
+  labs(fill="Species")+
+  xlim(0.5, 2.5)
+pie
+
+```
+
+\newpage
+
+## Metadata Ressources
+### Download and links for data
+```{r data_link, echo=FALSE, results='asis'}
+f<-as.data.frame(do.call("rbind", lapply(md$distributionInfo$transferOptions[[1]]$onLine, function(x){data.frame(link = x$linkage$value, name = x$name, description = x$description)})))
+f$text<-f$text<-glue('**{f$description}** [link]({f$link})')
+
+for (i in 1:nrow(f)) {
+    cat("-", f[i,]$text, '\n')
+}
+```
+
+### Download and links for metadata
+- **Metadata - XML Format :** [xml link](https://geonetwork-sdi-lab.d4science.org/geonetwork/srv/eng/xml.metadata.get?uuid=fao_capture_flag_dbquery_advanced_multiyear)
+- **Metadata - Geonetwork Catalog :** [geonetwork catalog link](https://geonetwork-sdi-lab.d4science.org/geonetwork/srv/eng/catalog.search#/metadata/fao_capture_flag_dbquery_advanced_multiyear)
+
+### About this ressource
+
+- **Date of `r md$identificationInfo[[1]]$citation$date[[2]]$dateType$value` : ** `r md$identificationInfo[[1]]$citation$date[[2]]$date `
+
+- **Date of edition : ** `r gsub(md$identificationInfo[[1]]$citation$editionDate,pattern ='T',replacement = ' ')`
+
+- **Lineage :** `r md$dataQualityInfo[[1]]$lineage$statement`
+
+
+### Contact for the ressource
+
+```{r contact_info, echo=FALSE, results='asis'}
+f<-as.data.frame((do.call("rbind", lapply(md$identificationInfo[[1]]$pointOfContact, function(x){data.frame(individualName = x$individualName, organisationName = x$organisationName, electronicMailAddress = x$contactInfo$address$electronicMailAddress,role = x$role$value)}))))
+
+for (i in 1:nrow(f)) {
+    cat("-", as.character(f[i,]$role), '\n',
+        "**",as.character(f[i,]$individualName),"(",as.character(f[i,]$organisationName),")**",'\n',
+        as.character(f[i,]$electronicMailAddress),'\n'
+        )
+}
+
+```
+
+
+\newpage
+
+## Access to data with R
+
+******
+
+```{r echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE}
+rtext<-glue('#packages
+
+     if(!require(ows4R)){{
+     install.packages("ows4R")
+     require(ows4R)
+     }}
+     
+     if(!require(sp)){{
+       install.packages("sp")
+       require(sp)
+     }}   
+     
+#Dataset PID
+
+pid <- "{query$pid}"
+
+layer <- "{query$layer}"
+
+#Connect to OGC CSW Catalogue to get METADATA
+
+CSW <- CSWClient$new(
+
+       url = "{query$csw_server}",
+       
+       serviceVersion = "{query$csw_version}",
+       
+       logger = "INFO"
+       
+       )
+
+#Get metadata for dataset
+
+md <- CSW$getRecordById(pid, outputSchema = "http://www.isotc211.org/2005/gmd")
+
+fc <- CSW$getRecordById(paste0(pid,"_dsd"), outputSchema = "http://www.isotc211.org/2005/gfc")
+
+#Connect to OGC WFS to get DATA
+
+WFS <- WFSClient$new(
+
+        url = "{query$wfs_server}",
+        
+        serviceVersion = "{query$wfs_version}",
+        
+        logger = "INFO"
+        
+        )
+
+#Get feature type for dataset "{query$layer}"
+
+ft <- WFS$capabilities$findFeatureTypeByName(layer)
+
+#Get data features for dataset "{query$layer}"
+
+data.sf <- ft$getFeatures(viewparams = "{query$par}")
+
+data.sp <- as(data.sf, "Spatial")
+
+')
+```
+`r rtext`
+
+******
+
+

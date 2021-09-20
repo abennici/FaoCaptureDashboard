@@ -1,0 +1,22 @@
+
+```{r echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE}
+tmp<-subset(region_register_github(),label==r)
+message<-paste0(tmp$label,' [',tmp$code,']')
+```
+
+## `r message`
+
+```{r echo=FALSE, include=FALSE}
+
+data_region<-subset(data,region==tmp$code)
+out2 = NULL
+for (f in unique(data_region$flag)) {
+  out2 <- c(out2, knit_child(file.path(getwd(),"Child_Flag.Rmd")))
+}
+```
+
+```{r, echo=FALSE, results="asis"}
+cat(paste(out2, collapse = '\n'))
+```
+
+\newpage

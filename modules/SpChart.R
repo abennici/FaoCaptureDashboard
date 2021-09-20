@@ -14,7 +14,7 @@ SpChartUI <- function(id) {
   )
 }
 # Function for module server logic
-SpChart <- function(input, output, session,data) {
+SpChart <- function(input, output, session,data,results) {
   
   accumulate_by <- function(dat, var) {
     var <- lazyeval::f_eval(var, dat)
@@ -37,7 +37,8 @@ observe({
     filter(species %in% rank_sp$species)%>%
     group_by(year,species) %>% 
     summarise(capture = sum(capture))%>%
-    ungroup
+    ungroup()
+
   
   observeEvent(input$Plot_sp_select, {
     if(input$Plot_sp_select == "Default"){ 
@@ -51,10 +52,19 @@ observe({
         mode = 'lines',
         line = list(simplyfy = F),
         text = ~paste("Year: ", year, "<br>capture: ", capture, "<br>species: ", species), 
-        hoverinfo = 'text'
+     ###, "<br>species description: ", "<a href='",url,"'>link</a>
+         #  customdata = ~url,
+        overinfo = 'text'
       )
       
+       #fig_sp<-fig_sp %>%
+        #      add_markers(
+      #            text = ~paste("Year: ", year, "<br>capture: ", capture, "<br>species: ", species, "<br>species description: ", ),
+         #         customdata = fig_sp$url
+          #    )
+      # 
       fig_sp <- fig_sp %>% layout(
+        hovermode ='closest',
         legend = list(orientation = "h",
                       font = list(size = 10),
                       bgcolor ='rgba(0,0,0,0)',
@@ -77,6 +87,16 @@ observe({
           zeroline = F
         ))
       
+ #      onRender(
+ #        fig_sp, "
+ #   function(el) {
+ #     el.on('plotly_click', function(d) {
+ #       var url = d.points[0].customdata;
+ #       window.open(url);
+ #     });
+ #   }
+ # ")
+      results$fig_sp<-df_sp
       return(output$Plot_sp <- renderPlotly({fig_sp}))
       
     }else{      

@@ -1,0 +1,192 @@
+---
+title: "`r title`"
+subtitle: "`r results$regionalized_subtitle`"
+date : "`r format(Sys.time(), '%d %B, %Y')`"
+header-includes:
+- \usepackage{pdflscape}
+- \usepackage{longtable}
+- \usepackage{tabu}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+- \usepackage{rotating}
+- \usepackage{fancyhdr}
+- \usepackage{array}
+output:
+     pdf_document:
+       fig_caption: yes
+       toc: false
+       number_sections: true
+---
+\addtolength{\headheight}{1cm} 
+\pagestyle{fancyplain} 
+\pagenumbering{gobble} 
+\rhead{\includegraphics[height=1cm]{`r paste0(unlist(strsplit(getwd(),'FaoCaptureDashboard'))[1],'FaoCaptureDashboard/www/logo_BlueCloud.png')`}} 
+\lhead{\includegraphics[height=1cm]{`r paste0(unlist(strsplit(getwd(),'FaoCaptureDashboard'))[1],'FaoCaptureDashboard/www/FAO-logo.png')`}}
+\renewcommand{\headrulewidth}{0pt} 
+\newpage
+\renewcommand{\headheight}{0pt} 
+\fancyhf{}
+
+```{=latex}
+\tableofcontents
+
+```
+
+
+---
+
+```{r echo=FALSE, include=FALSE}
+library("knitr")
+library("reshape")
+library("xtable")
+library("readr")
+library('kableExtra')
+library('magrittr')
+library('ggplot2')
+library('dplyr')
+library('paletteer')
+
+
+#SP register
+req = readr::read_csv("https://raw.githubusercontent.com/openfigis/RefData/gh-pages/species/CL_FI_SPECIES_ITEM.csv", col_names = T)
+sp_register <- data.frame(
+  species = req$Alpha3_Code,
+  label = paste0(req$Name_En," [",req$Alpha3_Code,"]"),
+  stringsAsFactors = FALSE
+)
+
+region_register_github <-function(){
+  req<-readr::read_csv("https://raw.githubusercontent.com/openfigis/RefData/gh-pages/country/CL_FI_COUNTRY_GEOREGION.csv")  
+  out <- data.frame(
+    code = req$UN_Code,
+    label = req$Name_En,
+    stringsAsFactors = FALSE
+  )
+  out <- out[!is.na(out$code),]
+  return(out)
+}
+
+l_flag<-readr::read_csv("https://raw.githubusercontent.com/openfigis/RefData/gh-pages/country/CL_FI_COUNTRY_ITEM.csv", guess_max = 0)
+l_flag<-l_flag[,c("ISO3_Code","Name_En")]
+colnames(l_flag)<-c("flag","flag_name")
+
+out1 = NULL
+for (r in results$region) {
+  out1 <- c(out1, knit_child(file.path(getwd(),"Child_Region.Rmd")))
+}
+```
+
+\newpage
+# Results
+
+```{r, echo=FALSE, results="asis"}
+cat(paste(out1, collapse = '\n'))
+```
+
+\newpage
+
+# Metadata Ressources
+## Download and links for data
+```{r data_link, echo=FALSE, results='asis'}
+f<-as.data.frame(do.call("rbind", lapply(md$distributionInfo$transferOptions[[1]]$onLine, function(x){data.frame(link = x$linkage$value, name = x$name, description = x$description)})))
+f$text<-f$text<-glue('**{f$description}** [link]({f$link})')
+
+for (i in 1:nrow(f)) {
+    cat("-", f[i,]$text, '\n')
+}
+```
+
+## Download and links for metadata
+- **Metadata - XML Format :** [xml link](https://geonetwork-sdi-lab.d4science.org/geonetwork/srv/eng/xml.metadata.get?uuid=fao_capture_flag_dbquery_advanced_multiyear)
+- **Metadata - Geonetwork Catalog :** [geonetwork catalog link](https://geonetwork-sdi-lab.d4science.org/geonetwork/srv/eng/catalog.search#/metadata/fao_capture_flag_dbquery_advanced_multiyear)
+
+## About this ressource
+
+- **Date of `r md$identificationInfo[[1]]$citation$date[[2]]$dateType$value` : ** `r md$identificationInfo[[1]]$citation$date[[2]]$date `
+
+- **Date of edition : ** `r gsub(md$identificationInfo[[1]]$citation$editionDate,pattern ='T',replacement = ' ')`
+
+- **Lineage :** `r md$dataQualityInfo[[1]]$lineage$statement`
+
+
+## Contact for the ressource
+
+```{r contact_info, echo=FALSE, results='asis'}
+f<-as.data.frame((do.call("rbind", lapply(md$identificationInfo[[1]]$pointOfContact, function(x){data.frame(individualName = x$individualName, organisationName = x$organisationName, electronicMailAddress = x$contactInfo$address$electronicMailAddress,role = x$role$value)}))))
+
+for (i in 1:nrow(f)) {
+    cat("-", as.character(f[i,]$role), '\n',
+        "**",as.character(f[i,]$individualName),"(",as.character(f[i,]$organisationName),")**",'\n',
+        as.character(f[i,]$electronicMailAddress),'\n'
+        )
+}
+
+```
+
+
+\newpage
+
+# Access to data with R
+
+```{r echo=FALSE,comment=FALSE,warning=FALSE,message=FALSE}
+rtext<-glue('#packages
+
+     if(!require(ows4R)){{
+     install.packages("ows4R")
+     require(ows4R)
+     }}
+     
+     if(!require(sp)){{
+       install.packages("sp")
+       require(sp)
+     }}   
+     
+#Dataset PID
+
+pid <- "{query$pid}"
+
+layer <- "{query$layer}"
+
+#Connect to OGC CSW Catalogue to get METADATA
+
+CSW <- CSWClient$new(
+
+       url = "{query$csw_server}",
+       
+       serviceVersion = "{query$csw_version}",
+       
+       logger = "INFO"
+       
+       )
+
+#Get metadata for dataset
+
+md <- CSW$getRecordById(pid, outputSchema = "http://www.isotc211.org/2005/gmd")
+
+fc <- CSW$getRecordById(paste0(pid,"_dsd"), outputSchema = "http://www.isotc211.org/2005/gfc")
+
+#Connect to OGC WFS to get DATA
+
+WFS <- WFSClient$new(
+
+        url = "{query$wfs_server}",
+        
+        serviceVersion = "{query$wfs_version}",
+        
+        logger = "INFO"
+        
+        )
+
+#Get feature type for dataset "{query$layer}"
+
+ft <- WFS$capabilities$findFeatureTypeByName(layer)
+
+#Get data features for dataset "{query$layer}"
+
+data.sf <- ft$getFeatures(viewparams = "{query$par}")
+
+data.sp <- as(data.sf, "Spatial")
+
+')
+```
+`r rtext`

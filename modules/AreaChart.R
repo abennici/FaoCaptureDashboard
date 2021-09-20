@@ -14,7 +14,7 @@ AreaChartUI <- function(id) {
 }
 
 # Function for module server logic
-AreaChart <- function(input, output, session,data) {
+AreaChart <- function(input, output, session,data,results) {
   
   accumulate_by <- function(dat, var) {
     var <- lazyeval::f_eval(var, dat)
@@ -30,7 +30,7 @@ AreaChart <- function(input, output, session,data) {
     df_area <- data() %>%
       group_by(year,f_area_type) %>% 
       summarise(capture = sum(capture))%>%
-      ungroup
+      ungroup()
     
     observeEvent(input$Plot_area_select, {
       if(input$Plot_area_select == "Default"){ 
@@ -70,7 +70,8 @@ AreaChart <- function(input, output, session,data) {
             zeroline = F
           ))
         
-        
+       # results$fig_area<-fig_area
+        results$fig_area<-df_area
         return(output$Plot_area <- renderPlotly({fig_area}))
       }else{      
         print("ANIMATE")

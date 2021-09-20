@@ -73,7 +73,7 @@ p <- data %>%
 
 output$Top_sp <- renderImage({
   #outfile <- tempfile(fileext='.gif')
-  anim_save("outfile.gif", animate(p,  nframe=150 ,duration=length(unique(data$year)), end_pause =15, width = 500, height = 280,renderer =gifski_renderer()))
+  anim_save("outfile.gif", animate(p,  nframe=100 ,duration=length(unique(data$year)), end_pause =15, width = 500, height = 280,renderer =gifski_renderer()))
   #anim_save("outfile.avi", animate(p, duration=4*length(unique(data$year)), end_pause =40, width = 1000, height = 500,renderer =av_renderer()))
   # nframes = length(unique(data$year))*6
   list(src = "outfile.gif",
@@ -131,7 +131,7 @@ output$Top_sp <- renderImage({
 
    output$Top_flag <- renderImage({
      #outfile <- tempfile(fileext='.gif')
-     anim_save("outfile2.gif", animate(p2, nframe=150,duration=length(unique(data_flag$year)),end_pause =15, width = 500, height = 280,renderer =gifski_renderer()))
+     anim_save("outfile2.gif", animate(p2, nframe=100,duration=length(unique(data_flag$year)),end_pause =15, width = 500, height = 280,renderer =gifski_renderer()))
      # nframes = length(unique(data$year))*6
      list(src = "outfile2.gif",
           contentType = 'image/gif'

@@ -7,7 +7,7 @@ DataTableWideUI <- function(id) {
   #tabPanel("DataTable", DTOutput(ns('table')))
   tabPanel("Data", 
            #downloadButton(ns('downloadData'), "Download"),
-           div(dataTableOutput(ns('table'))%>%withSpinner(type = 2),  style = "font-size:80%"))
+           div(DTOutput(ns('table'))%>%withSpinner(type = 2),  style = "font-size:80%"))
   
 }
 
@@ -24,15 +24,18 @@ DataTableWide <- function(input, output, session,data,dsd) {
     tab$capture<-paste0(tab$capture," t")
     names(tab)<-label
     
-    output$table <- renderDataTable(tab,
-                                    escape = FALSE,
-                                    rownames=FALSE,
+    #output$table <- renderDataTable(
+    output$table <- DT::renderDT(server = FALSE, {
+      DT::datatable( 
+                                  tab,
+                                    #escape = FALSE,
+                                    #rownames=FALSE,
                                     extensions = c("Buttons"), 
                                     options =list(
                                       dom = 'Bfrtip',
                                       pageLength=5,
-                                      lengthChange=FALSE,
-                                      deferRender = TRUE,
+                                      #lengthChange=FALSE,
+                                      #deferRender = TRUE,
                                       scroll = FALSE,
                                       buttons = list(
                                         list(extend = 'copy'),
@@ -47,15 +50,8 @@ DataTableWide <- function(input, output, session,data,dsd) {
                                       )
                                     )
     
-    # output$downloadData <- downloadHandler(
-    #   filename = function() {
-    #     paste("data", ".csv", sep = "")
-    #   },
-    #   content = function(file) {
-    #     write.csv(tab, file, row.names = FALSE)
-    #   }
-    # )
-                                 
+                         
 })
+  })
 }
 ####
